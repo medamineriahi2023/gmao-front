@@ -1,13 +1,29 @@
-import { Component, Input, Output, EventEmitter } from '@angular/core';
+import { Component, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { ReactiveFormsModule, FormBuilder, FormGroup, Validators } from '@angular/forms';
+import { FormBuilder, FormGroup, Validators, ReactiveFormsModule } from '@angular/forms';
+import { MatDialogRef } from '@angular/material/dialog';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
 import { MatSelectModule } from '@angular/material/select';
 import { MatDatepickerModule } from '@angular/material/datepicker';
-import { MatNativeDateModule } from '@angular/material/core';
+import { MatNativeDateModule, DateAdapter, MAT_DATE_FORMATS, MAT_DATE_LOCALE } from '@angular/material/core';
 import { MatButtonModule } from '@angular/material/button';
-import { WorkOrder } from '../../../models/work-order.model';
+import { AuthService } from '../../../services/auth.service';
+import { User } from '../../../models/user.model';
+import { Equipment } from '../../../models/equipment.model';
+import { MockDataService } from '../../../services/mock-data.service';
+
+const MY_DATE_FORMATS = {
+  parse: {
+    dateInput: 'DD/MM/YYYY',
+  },
+  display: {
+    dateInput: 'DD/MM/YYYY',
+    monthYearLabel: 'MMM YYYY',
+    dateA11yLabel: 'LL',
+    monthYearA11yLabel: 'MMMM YYYY',
+  },
+};
 
 @Component({
   selector: 'app-work-order-form',
@@ -22,30 +38,33 @@ import { WorkOrder } from '../../../models/work-order.model';
     MatNativeDateModule,
     MatButtonModule
   ],
+  providers: [
+    { provide: MAT_DATE_LOCALE, useValue: 'fr-FR' },
+    { provide: MAT_DATE_FORMATS, useValue: MY_DATE_FORMATS }
+  ],
   template: `
-    <form [formGroup]="form" (ngSubmit)="onSubmit()" class="work-order-form">
-      <div class="form-section">
-        <h2>Informations générales</h2>
-        
-        <mat-form-field appearance="outline">
-          <mat-label>Type</mat-label>
-          <mat-select formControlName="type" required>
-            <mat-option value="corrective">Correctif</mat-option>
-            <mat-option value="preventive">Préventif</mat-option>
+    <div class="work-order-form-container">
+      <h2>{{ workOrder ? 'Modifier' : 'Créer' }} un bon de travail</h2>
+      
+      <form [formGroup]="workOrderForm" (ngSubmit)="onSubmit()">
+        <!-- Équipement -->
+        <mat-form-field appearance="fill" class="full-width">
+          <mat-label>Équipement</mat-label>
+          <mat-select formControlName="equipmentId" required>
+            <mat-option *ngFor="let equipment of equipments" [value]="equipment.id">
+              {{equipment.name}} - {{equipment.location}}
+            </mat-option>
           </mat-select>
         </mat-form-field>
 
-        <mat-form-field appearance="outline">
-          <mat-label>Titre</mat-label>
-          <input matInput formControlName="title" required>
+        <!-- Description du problème -->
+        <mat-form-field appearance="fill" class="full-width">
+          <mat-label>Description du problème</mat-label>
+          <textarea matInput formControlName="description" required rows="4"></textarea>
         </mat-form-field>
 
-        <mat-form-field appearance="outline">
-          <mat-label>Description</mat-label>
-          <textarea matInput formControlName="description" rows="4" required></textarea>
-        </mat-form-field>
-
-        <mat-form-field appearance="outline">
+        <!-- Priorité -->
+        <mat-form-field appearance="fill" class="full-width">
           <mat-label>Priorité</mat-label>
           <mat-select formControlName="priority" required>
             <mat-option value="low">Basse</mat-option>
@@ -54,105 +73,115 @@ import { WorkOrder } from '../../../models/work-order.model';
             <mat-option value="urgent">Urgente</mat-option>
           </mat-select>
         </mat-form-field>
-      </div>
 
-      <div class="form-section">
-        <h2>Planification</h2>
-        
-        <div class="date-range">
-          <mat-form-field appearance="outline">
-            <mat-label>Date de début</mat-label>
-            <input matInput [matDatepicker]="startPicker" formControlName="plannedStartDate" required>
-            <mat-datepicker-toggle matSuffix [for]="startPicker"></mat-datepicker-toggle>
-            <mat-datepicker #startPicker></mat-datepicker>
-          </mat-form-field>
-
-          <mat-form-field appearance="outline">
-            <mat-label>Date de fin</mat-label>
-            <input matInput [matDatepicker]="endPicker" formControlName="plannedEndDate" required>
-            <mat-datepicker-toggle matSuffix [for]="endPicker"></mat-datepicker-toggle>
-            <mat-datepicker #endPicker></mat-datepicker>
-          </mat-form-field>
-        </div>
-
-        <mat-form-field appearance="outline">
-          <mat-label>Coût estimé</mat-label>
-          <input matInput type="number" formControlName="estimatedCost" required>
-          <span matSuffix>€</span>
+        <!-- Technicien assigné -->
+        <mat-form-field appearance="fill" class="full-width">
+          <mat-label>Technicien assigné</mat-label>
+          <mat-select formControlName="assignedTechnicianId" required>
+            <mat-option *ngFor="let tech of technicians" [value]="tech.id">
+              {{tech.firstName}} {{tech.lastName}} ({{tech.username}})
+            </mat-option>
+          </mat-select>
         </mat-form-field>
-      </div>
 
-      <div class="form-actions">
-        <button mat-button type="button" (click)="onCancel.emit()">Annuler</button>
-        <button mat-raised-button color="primary" type="submit" [disabled]="!form.valid">
-          {{workOrder ? 'Modifier' : 'Créer'}}
-        </button>
-      </div>
-    </form>
+        <!-- Date prévue -->
+        <mat-form-field appearance="fill" class="full-width">
+          <mat-label>Date prévue</mat-label>
+          <input matInput [matDatepicker]="picker" formControlName="dueDate" required>
+          <mat-datepicker-toggle matSuffix [for]="picker"></mat-datepicker-toggle>
+          <mat-datepicker #picker></mat-datepicker>
+        </mat-form-field>
+
+        <!-- Boutons d'action -->
+        <div class="form-actions">
+          <button mat-button type="button" (click)="onCancel()">Annuler</button>
+          <button mat-raised-button color="primary" type="submit" [disabled]="!workOrderForm.valid">
+            {{ workOrder ? 'Modifier' : 'Créer' }}
+          </button>
+        </div>
+      </form>
+    </div>
   `,
   styles: [`
-    .work-order-form {
-      padding: 24px;
-      max-width: 800px;
+    .work-order-form-container {
+      padding: 20px;
+      max-width: 600px;
       margin: 0 auto;
     }
 
-    .form-section {
-      margin-bottom: 32px;
-    }
-
-    .form-section h2 {
-      margin-bottom: 16px;
-      color: #333;
-      font-size: 18px;
-    }
-
-    mat-form-field {
+    .full-width {
       width: 100%;
-      margin-bottom: 16px;
-    }
-
-    .date-range {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 16px;
+      margin-bottom: 15px;
     }
 
     .form-actions {
       display: flex;
       justify-content: flex-end;
-      gap: 16px;
-      margin-top: 32px;
+      gap: 10px;
+      margin-top: 20px;
+    }
+
+    h2 {
+      margin-bottom: 20px;
+      color: #333;
+    }
+
+    textarea {
+      min-height: 100px;
     }
   `]
 })
-export class WorkOrderFormComponent {
-  @Input() set workOrder(value: WorkOrder | null) {
-    if (value) {
-      this.form.patchValue(value);
-    }
-  }
-  
-  @Output() onSave = new EventEmitter<Partial<WorkOrder>>();
-  @Output() onCancel = new EventEmitter<void>();
+export class WorkOrderFormComponent implements OnInit {
+  workOrderForm: FormGroup;
+  technicians: User[] = [];
+  equipments: Equipment[] = [];
+  workOrder: any = null;
 
-  form: FormGroup;
-
-  constructor(private fb: FormBuilder) {
-    this.form = this.fb.group({
-      type: ['corrective', Validators.required],
-      title: ['', Validators.required],
+  constructor(
+    private fb: FormBuilder,
+    private dialogRef: MatDialogRef<WorkOrderFormComponent>,
+    private authService: AuthService,
+    private mockDataService: MockDataService
+  ) {
+    this.workOrderForm = this.fb.group({
+      equipmentId: ['', Validators.required],
       description: ['', Validators.required],
       priority: ['medium', Validators.required],
-      plannedStartDate: [null, Validators.required],
-      plannedEndDate: [null, Validators.required],
-      estimatedCost: [0, [Validators.required, Validators.min(0)]]
+      assignedTechnicianId: ['', Validators.required],
+      dueDate: ['', Validators.required]
     });
   }
 
-  onSubmit() {
-    if (this.form.valid) {
-      this.onSave.emit(this.form.value);
+  ngOnInit() {
+    // Charger les techniciens
+    this.authService.getTechnicians().subscribe(techs => {
+      this.technicians = techs;
+    });
+
+    // Charger les équipements
+    this.mockDataService.getEquipments().subscribe(equipments => {
+      this.equipments = equipments;
+    });
+
+    // Si modification d'un bon existant
+    if (this.workOrder) {
+      this.workOrderForm.patchValue({
+        equipmentId: this.workOrder.equipmentId,
+        description: this.workOrder.description,
+        priority: this.workOrder.priority,
+        assignedTechnicianId: this.workOrder.assignedTechnicianId,
+        dueDate: this.workOrder.dueDate
+      });
     }
+  }
+
+  onSubmit() {
+    if (this.workOrderForm.valid) {
+      this.dialogRef.close(this.workOrderForm.value);
+    }
+  }
+
+  onCancel() {
+    this.dialogRef.close();
   }
 }

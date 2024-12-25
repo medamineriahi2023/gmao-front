@@ -9,7 +9,20 @@ import { MatNativeDateModule } from '@angular/material/core';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 import { MatChipsModule } from '@angular/material/chips';
+import { DateAdapter, MAT_DATE_FORMATS, MAT_DATE_LOCALE, NativeDateAdapter } from '@angular/material/core';
 import { Intervention } from '../../../models/intervention.model';
+
+export const MY_FORMATS = {
+  parse: {
+    dateInput: 'DD/MM/YYYY',
+  },
+  display: {
+    dateInput: 'DD/MM/YYYY',
+    monthYearLabel: 'MMM YYYY',
+    dateA11yLabel: 'LL',
+    monthYearA11yLabel: 'MMMM YYYY',
+  },
+};
 
 @Component({
   selector: 'app-intervention-form',
@@ -25,6 +38,12 @@ import { Intervention } from '../../../models/intervention.model';
     MatButtonModule,
     MatIconModule,
     MatChipsModule
+  ],
+  providers: [
+    MatDatepickerModule,
+    { provide: DateAdapter, useClass: NativeDateAdapter },
+    { provide: MAT_DATE_LOCALE, useValue: 'fr-FR' },
+    { provide: MAT_DATE_FORMATS, useValue: MY_FORMATS }
   ],
   template: `
     <form [formGroup]="form" (ngSubmit)="onSubmit()" class="intervention-form">

@@ -8,6 +8,7 @@ import { LoginComponent } from './components/auth/login/login.component';
 import { MessagingComponent } from './components/messaging/messaging.component';
 import { ChatComponent } from './components/messaging/chat/chat.component';
 import { AuthGuard } from './services/auth.guard';
+import { MaintenanceDashboardComponent } from './components/dashboard/maintenance-dashboard/maintenance-dashboard.component';
 
 export const routes: Routes = [
   { path: 'login', component: LoginComponent },
@@ -24,5 +25,11 @@ export const routes: Routes = [
     children: [
       { path: ':id', component: ChatComponent }
     ]
+  },
+  {
+    path: 'dashboard',
+    component: MaintenanceDashboardComponent,
+    canActivate: [AuthGuard],
+    data: { roles: ['maintenance_chief'] }
   }
 ];

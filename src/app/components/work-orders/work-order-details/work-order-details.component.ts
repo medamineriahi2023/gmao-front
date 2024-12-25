@@ -1,4 +1,4 @@
-import { Component, Input } from '@angular/core';
+import { Component, Input, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { MatCardModule } from '@angular/material/card';
 import { MatIconModule } from '@angular/material/icon';
@@ -6,185 +6,182 @@ import { MatButtonModule } from '@angular/material/button';
 import { MatDividerModule } from '@angular/material/divider';
 import { MatChipsModule } from '@angular/material/chips';
 import { MatTabsModule } from '@angular/material/tabs';
+import { MatSnackBar } from '@angular/material/snack-bar';
+import { MatDialogModule, MatDialog } from '@angular/material/dialog';
+import { MarkdownModule } from 'ngx-markdown';
 import { WorkOrder } from '../../../models/work-order.model';
+import { WorkOrderService } from '../../../services/work-order.service';
+import { WorkOrderActionsService } from '../../../services/work-order-actions.service';
+import { AuthService } from '../../../services/auth.service';
+import { User } from '../../../models/user.model';
+import { Equipment } from '../../../models/equipment.model';
+import { MockDataService } from '../../../services/mock-data.service';
+import { WorkOrderPlanningDialogComponent } from '../work-order-planning/work-order-planning-dialog.component';
 
 @Component({
   selector: 'app-work-order-details',
   standalone: true,
   imports: [
     CommonModule,
-    MatCardModule,
-    MatIconModule,
+    MatDialogModule,
     MatButtonModule,
-    MatDividerModule,
+    MatIconModule,
     MatChipsModule,
-    MatTabsModule
+    MatDividerModule,
+    MatTabsModule,
+    MatCardModule,
+    MarkdownModule,
+    WorkOrderPlanningDialogComponent
   ],
   template: `
     <div class="details-container" *ngIf="workOrder">
-      <mat-card>
-        <mat-card-header>
-          <mat-icon mat-card-avatar [ngClass]="'type-' + workOrder.type">
-            {{getTypeIcon(workOrder.type)}}
-          </mat-icon>
-          <mat-card-title>
-            Bon de travail #{{workOrder.id}}
-            <mat-chip-listbox class="status-chips">
-              <mat-chip [ngClass]="'status-' + workOrder.status">
-                {{getStatusLabel(workOrder.status)}}
-              </mat-chip>
-              <mat-chip [ngClass]="'priority-' + workOrder.priority">
-                {{getPriorityLabel(workOrder.priority)}}
-              </mat-chip>
-            </mat-chip-listbox>
-          </mat-card-title>
-          <mat-card-subtitle>
-            Créé le {{workOrder.createdAt | date:'dd/MM/yyyy'}}
-          </mat-card-subtitle>
-        </mat-card-header>
-
-        <mat-card-content>
-          <div class="info-section">
-            <h3>Description</h3>
-            <p>{{workOrder.description}}</p>
+      <!-- Header Section -->
+      <div class="header-section">
+        <div class="title-section">
+          <h2>Bon de travail #{{workOrder.id}}</h2>
+          <div class="status-chips">
+            <span class="badge type-{{workOrder.type}}">
+              {{workOrder.type === 'corrective' ? 'Correctif' : 'Préventif'}}
+            </span>
+            <span class="badge status-{{workOrder.status}}">
+              {{getStatusLabel(workOrder.status)}}
+            </span>
+            <span class="badge priority-{{workOrder.priority}}">
+              {{getPriorityLabel(workOrder.priority)}}
+            </span>
           </div>
+        </div>
+        
+        <div class="action-buttons" *ngIf="canShowActionButtons()">
+          <button mat-raised-button color="primary" 
+                  *ngIf="workOrder.status === 'planned'"
+                  (click)="startWorkOrder()">
+            <mat-icon>play_arrow</mat-icon>
+            Démarrer
+          </button>
+          <button mat-raised-button color="accent" 
+                  *ngIf="workOrder.status === 'in_progress'"
+                  (click)="completeWorkOrder()">
+            <mat-icon>check</mat-icon>
+            Terminer
+          </button>
+          <button mat-raised-button color="warn" 
+                  *ngIf="workOrder.status === 'planned' || workOrder.status === 'in_progress'"
+                  (click)="cancelWorkOrder()">
+            <mat-icon>cancel</mat-icon>
+            Annuler
+          </button>
+        </div>
+      </div>
 
-          <mat-divider></mat-divider>
+      <mat-divider></mat-divider>
 
-          <div class="info-section">
-            <h3>Planification</h3>
+      <!-- Content Section -->
+      <mat-tab-group>
+        <!-- Details Tab -->
+        <mat-tab label="Détails">
+          <div class="tab-content">
             <div class="info-grid">
-              <div class="info-item">
-                <span class="label">Date de début prévue</span>
-                <span class="value">{{workOrder.plannedStartDate | date:'dd/MM/yyyy'}}</span>
-              </div>
-              <div class="info-item">
-                <span class="label">Date de fin prévue</span>
-                <span class="value">{{workOrder.plannedEndDate | date:'dd/MM/yyyy'}}</span>
-              </div>
-              <div class="info-item">
-                <span class="label">Date de début réelle</span>
-                <span class="value">{{workOrder.actualStartDate | date:'dd/MM/yyyy' || 'Non commencé'}}</span>
-              </div>
-              <div class="info-item">
-                <span class="label">Date de fin réelle</span>
-                <span class="value">{{workOrder.actualEndDate | date:'dd/MM/yyyy' || 'Non terminé'}}</span>
-              </div>
-            </div>
-          </div>
-
-          <mat-divider></mat-divider>
-
-          <div class="info-section">
-            <h3>Coûts</h3>
-            <div class="info-grid">
-              <div class="info-item">
-                <span class="label">Coût estimé</span>
-                <span class="value">{{workOrder.estimatedCost | currency:'EUR'}}</span>
-              </div>
-              <div class="info-item">
-                <span class="label">Coût réel</span>
-                <span class="value">{{workOrder.actualCost | currency:'EUR' || 'Non défini'}}</span>
-              </div>
-            </div>
-          </div>
-
-          <mat-divider></mat-divider>
-
-          <div class="info-section">
-            <h3>Techniciens assignés</h3>
-            <mat-chip-listbox>
-              <mat-chip *ngFor="let tech of workOrder.assignedTechnicians">
-                {{tech}}
-              </mat-chip>
-            </mat-chip-listbox>
-          </div>
-
-          <mat-divider></mat-divider>
-
-          <mat-tab-group>
-            <mat-tab label="Tâches">
-              <div class="tab-content">
-                <table class="task-table">
-                  <thead>
-                    <tr>
-                      <th>Description</th>
-                      <th>Statut</th>
-                      <th>Durée estimée</th>
-                      <th>Durée réelle</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    <tr *ngFor="let task of workOrder.tasks">
-                      <td>{{task.description}}</td>
-                      <td>
-                        <mat-chip [ngClass]="'status-' + task.status">
-                          {{getTaskStatusLabel(task.status)}}
-                        </mat-chip>
-                      </td>
-                      <td>{{formatDuration(task.estimatedDuration)}}</td>
-                      <td>{{task.actualDuration ? formatDuration(task.actualDuration) : '-'}}</td>
-                    </tr>
-                  </tbody>
-                </table>
-              </div>
-            </mat-tab>
-
-            <mat-tab label="Pièces">
-              <div class="tab-content">
-                <table class="parts-table">
-                  <thead>
-                    <tr>
-                      <th>Nom</th>
-                      <th>Quantité</th>
-                      <th>Coût unitaire</th>
-                      <th>Coût total</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    <tr *ngFor="let part of workOrder.parts">
-                      <td>{{part.name}}</td>
-                      <td>{{part.quantity}}</td>
-                      <td>{{part.unitCost | currency:'EUR'}}</td>
-                      <td>{{part.totalCost | currency:'EUR'}}</td>
-                    </tr>
-                  </tbody>
-                  <tfoot>
-                    <tr>
-                      <td colspan="3">Total</td>
-                      <td>{{getTotalPartsCost() | currency:'EUR'}}</td>
-                    </tr>
-                  </tfoot>
-                </table>
-              </div>
-            </mat-tab>
-
-            <mat-tab label="Commentaires">
-              <div class="tab-content comments-list">
-                <div *ngFor="let comment of sortedComments" class="comment">
-                  <div class="comment-header">
-                    <span class="comment-author">{{comment.author}}</span>
-                    <span class="comment-date">{{comment.createdAt | date:'dd/MM/yyyy HH:mm'}}</span>
-                  </div>
-                  <div class="comment-content">{{comment.content}}</div>
+              <div class="info-section">
+                <h3>Informations générales</h3>
+                <div class="info-item">
+                  <span class="label">Titre :</span>
+                  <span>{{workOrder.title}}</span>
+                </div>
+                <div class="info-item">
+                  <span class="label">Description :</span>
+                  <span>{{workOrder.description}}</span>
+                </div>
+                <div class="info-item">
+                  <span class="label">Date prévue :</span>
+                  <span>{{workOrder.plannedStartDate | date:'dd/MM/yyyy'}}</span>
+                </div>
+                <div class="info-item" *ngIf="workOrder.actualStartDate">
+                  <span class="label">Date de début :</span>
+                  <span>{{workOrder.actualStartDate | date:'dd/MM/yyyy HH:mm'}}</span>
+                </div>
+                <div class="info-item" *ngIf="workOrder.actualEndDate">
+                  <span class="label">Date de fin :</span>
+                  <span>{{workOrder.actualEndDate | date:'dd/MM/yyyy HH:mm'}}</span>
                 </div>
               </div>
-            </mat-tab>
-          </mat-tab-group>
-        </mat-card-content>
 
-        <mat-card-actions align="end">
-          <button mat-button color="warn" *ngIf="canCancel()" (click)="cancelWorkOrder()">
-            Annuler le bon de travail
-          </button>
-          <button mat-button color="primary" *ngIf="canStart()" (click)="startWorkOrder()">
-            Démarrer le travail
-          </button>
-          <button mat-raised-button color="primary" *ngIf="canComplete()" (click)="completeWorkOrder()">
-            Terminer le travail
-          </button>
-        </mat-card-actions>
-      </mat-card>
+              <div class="info-section">
+                <h3>Équipement</h3>
+                <div class="info-item" *ngIf="equipment">
+                  <span class="label">Nom :</span>
+                  <span>{{equipment.name}}</span>
+                </div>
+                <div class="info-item" *ngIf="equipment">
+                  <span class="label">Numéro de série :</span>
+                  <span>{{equipment.serialNumber}}</span>
+                </div>
+              </div>
+
+              <div class="info-section">
+                <h3>Technicien assigné</h3>
+                <div class="info-item" *ngIf="assignedTechnician">
+                  <mat-icon>person</mat-icon>
+                  <span>{{assignedTechnician.firstName}} {{assignedTechnician.lastName}}</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </mat-tab>
+
+        <!-- Tasks Tab -->
+        <mat-tab label="Tâches">
+          <div class="tab-content">
+            <div class="tasks-list">
+              <div *ngFor="let task of workOrder.tasks" class="task-item">
+                <div class="task-header">
+                  <span class="task-description">{{task.description}}</span>
+                  <div class="task-actions">
+                    <span class="badge status-{{task.status}}">
+                      {{getTaskStatusLabel(task.status)}}
+                    </span>
+                    <button mat-raised-button color="accent"
+                            *ngIf="canShowActionButtons() && workOrder.status === 'in_progress' && task.status !== 'completed'"
+                            (click)="completeTask(task.id)">
+                      <mat-icon>check</mat-icon>
+                      Terminer
+                    </button>
+                  </div>
+                </div>
+                <div class="task-details">
+                  <div class="task-info">
+                    <span class="label">Durée estimée :</span>
+                    <span>{{task.estimatedDuration}} minutes</span>
+                  </div>
+                  <div class="task-info" *ngIf="task.actualDuration">
+                    <span class="label">Durée réelle :</span>
+                    <span>{{task.actualDuration}} minutes</span>
+                  </div>
+                  <div class="task-notes" *ngIf="task.technicianNotes">
+                    <span class="label">Notes :</span>
+                    <span>{{task.technicianNotes}}</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </mat-tab>
+
+        <!-- Comments Tab -->
+        <mat-tab label="Commentaires">
+          <div class="tab-content">
+            <div class="comments-list">
+              <div *ngFor="let comment of workOrder.comments" class="comment-item">
+                <div class="comment-header">
+                  <span class="comment-author">{{comment.author}}</span>
+                  <span class="comment-date">{{comment.createdAt | date:'dd/MM/yyyy HH:mm'}}</span>
+                </div>
+                <div class="comment-content" markdown [data]="comment.content"></div>
+              </div>
+            </div>
+          </div>
+        </mat-tab>
+      </mat-tab-group>
     </div>
   `,
   styles: [`
@@ -194,52 +191,44 @@ import { WorkOrder } from '../../../models/work-order.model';
       margin: 0 auto;
     }
 
-    .status-chips {
-      margin-left: 16px;
-    }
-
-    .info-section {
-      padding: 16px 0;
-    }
-
-    .info-section h3 {
-      margin-bottom: 16px;
-      color: #333;
-      font-size: 16px;
-      font-weight: 500;
-    }
-
-    .info-grid {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-      gap: 16px;
-    }
-
-    .info-item {
+    .header-section {
       display: flex;
-      flex-direction: column;
-      gap: 4px;
+      justify-content: space-between;
+      align-items: flex-start;
+      margin-bottom: 24px;
     }
 
-    .label {
-      font-size: 12px;
-      color: #666;
-    }
-
-    .value {
-      font-size: 14px;
-      color: #333;
+    .title-section h2 {
+      margin: 0 0 16px 0;
+      font-size: 24px;
       font-weight: 500;
     }
 
-    .type-corrective { color: #f44336; }
-    .type-preventive { color: #2196f3; }
+    .status-chips {
+      display: flex;
+      gap: 8px;
+    }
 
-    .status-draft { background: #e0e0e0; }
-    .status-planned { background: #bbdefb; }
-    .status-in_progress { background: #fff3e0; }
-    .status-completed { background: #c8e6c9; }
-    .status-cancelled { background: #ffcdd2; }
+    .action-buttons {
+      display: flex;
+      gap: 8px;
+    }
+
+    .badge {
+      padding: 4px 8px;
+      border-radius: 4px;
+      font-size: 12px;
+      font-weight: 500;
+    }
+
+    .type-corrective { background: #ffebee; color: #c62828; }
+    .type-preventive { background: #e3f2fd; color: #1565c0; }
+
+    .status-draft { background: #f5f5f5; color: #616161; }
+    .status-planned { background: #e3f2fd; color: #1565c0; }
+    .status-in_progress { background: #fff3e0; color: #f57c00; }
+    .status-completed { background: #e8f5e9; color: #2e7d32; }
+    .status-cancelled { background: #ffebee; color: #c62828; }
 
     .priority-low { background: #e8f5e9; color: #2e7d32; }
     .priority-medium { background: #fff3e0; color: #f57c00; }
@@ -247,23 +236,80 @@ import { WorkOrder } from '../../../models/work-order.model';
     .priority-urgent { background: #ff5252; color: white; }
 
     .tab-content {
+      padding: 24px 0;
+    }
+
+    .info-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+      gap: 24px;
+    }
+
+    .info-section {
+      background: #f5f5f5;
+      border-radius: 8px;
       padding: 16px;
     }
 
-    table {
-      width: 100%;
-      border-collapse: collapse;
+    .info-section h3 {
+      margin: 0 0 16px 0;
+      font-size: 16px;
+      color: #333;
     }
 
-    th, td {
-      padding: 12px;
-      text-align: left;
-      border-bottom: 1px solid #e0e0e0;
+    .info-item {
+      margin-bottom: 12px;
     }
 
-    th {
+    .info-item .label {
       font-weight: 500;
       color: #666;
+      margin-right: 8px;
+    }
+
+    .tasks-list {
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }
+
+    .task-item {
+      background: #f5f5f5;
+      border-radius: 8px;
+      padding: 16px;
+    }
+
+    .task-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 12px;
+    }
+
+    .task-actions {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .task-description {
+      font-weight: 500;
+      flex: 1;
+    }
+
+    .task-details {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .task-info {
+      display: flex;
+      gap: 8px;
+    }
+
+    .task-notes {
+      margin-top: 8px;
     }
 
     .comments-list {
@@ -272,30 +318,80 @@ import { WorkOrder } from '../../../models/work-order.model';
       gap: 16px;
     }
 
-    .comment {
+    .comment-item {
       background: #f5f5f5;
-      padding: 16px;
       border-radius: 8px;
+      padding: 16px;
     }
 
     .comment-header {
       display: flex;
       justify-content: space-between;
       margin-bottom: 8px;
+      font-size: 14px;
     }
 
     .comment-author {
       font-weight: 500;
+      color: #1976d2;
     }
 
     .comment-date {
       color: #666;
-      font-size: 12px;
+    }
+
+    .comment-content {
+      white-space: pre-line;
+      line-height: 1.5;
+    }
+
+    .comment-content ::ng-deep {
+      p {
+        margin: 8px 0;
+      }
+      strong {
+        color: #333;
+      }
+      ul {
+        margin: 8px 0;
+        padding-left: 20px;
+      }
+      li {
+        margin: 4px 0;
+      }
     }
   `]
 })
-export class WorkOrderDetailsComponent {
+export class WorkOrderDetailsComponent implements OnInit {
   @Input() workOrder: WorkOrder | null = null;
+  equipment: Equipment | null = null;
+  assignedTechnician: User | null = null;
+  isTechnician: boolean = false;
+
+  constructor(
+    private workOrderService: WorkOrderService,
+    private workOrderActionsService: WorkOrderActionsService,
+    private authService: AuthService,
+    private mockDataService: MockDataService,
+    private snackBar: MatSnackBar,
+    private dialog: MatDialog
+  ) {
+    this.isTechnician = this.authService.getCurrentUser()?.role === 'technician';
+  }
+
+  ngOnInit() {
+    if (this.workOrder) {
+      // Load equipment details
+      this.mockDataService.getEquipmentById(this.workOrder.equipmentId).subscribe(
+        equipment => this.equipment = equipment || null
+      );
+
+      // Load technician details
+      this.authService.getUserById(this.workOrder.assignedTechnicianId).subscribe(
+        user => this.assignedTechnician = user || null
+      );
+    }
+  }
 
   getTypeIcon(type: string): string {
     return type === 'corrective' ? 'build' : 'schedule';
@@ -324,7 +420,7 @@ export class WorkOrderDetailsComponent {
 
   getTaskStatusLabel(status: string): string {
     const labels: Record<string, string> = {
-      'pending': 'À faire',
+      'pending': 'En attente',
       'in_progress': 'En cours',
       'completed': 'Terminé'
     };
@@ -360,15 +456,113 @@ export class WorkOrderDetailsComponent {
     return this.workOrder?.status === 'in_progress';
   }
 
+  canShowActionButtons(): boolean {
+    if (!this.workOrder) return false;
+    
+    const currentUser = this.authService.getCurrentUser();
+    if (!currentUser) return false;
+
+    // Only show action buttons if:
+    // 1. User is a technician AND this work order is assigned to them
+    // 2. User is a maintenance chief (they can act on any work order)
+    if (currentUser.role === 'technician') {
+      return this.workOrder.assignedTechnicianId === currentUser.id;
+    }
+    
+    return currentUser.role === 'maintenance_chief';
+  }
+
   cancelWorkOrder() {
-    // TODO: Implement work order cancellation
+    if (!this.workOrder) return;
+    
+    this.workOrderActionsService.cancelWorkOrder(this.workOrder).subscribe({
+      next: (updatedWorkOrder: WorkOrder) => {
+        this.workOrder = updatedWorkOrder;
+        this.snackBar.open('Bon de travail annulé avec succès', 'Fermer', {
+          duration: 3000
+        });
+      },
+      error: (error: Error) => {
+        this.snackBar.open('Erreur lors de l\'annulation du bon de travail', 'Fermer', {
+          duration: 3000
+        });
+      }
+    });
   }
 
   startWorkOrder() {
-    // TODO: Implement work order start
+    if (!this.workOrder) return;
+
+    // Ouvrir d'abord le dialogue de planification
+    const planningDialog = this.dialog.open(WorkOrderPlanningDialogComponent, {
+      width: '600px',
+      data: { workOrder: this.workOrder }
+    });
+
+    planningDialog.afterClosed().subscribe(tasks => {
+      if (tasks) {
+        // Si des tâches ont été définies, les enregistrer d'abord
+        this.workOrderActionsService.planWorkOrder(this.workOrder!, tasks).subscribe({
+          next: (updatedWorkOrder) => {
+            this.workOrder = updatedWorkOrder;
+            // Puis démarrer le bon de travail
+            this.workOrderActionsService.startWorkOrder(updatedWorkOrder).subscribe({
+              next: (startedWorkOrder) => {
+                this.workOrder = startedWorkOrder;
+                this.snackBar.open('Bon de travail démarré avec succès', 'Fermer', {
+                  duration: 3000
+                });
+              },
+              error: (error) => {
+                this.snackBar.open('Erreur lors du démarrage du bon de travail', 'Fermer', {
+                  duration: 3000
+                });
+              }
+            });
+          },
+          error: (error) => {
+            this.snackBar.open('Erreur lors de la planification des tâches', 'Fermer', {
+              duration: 3000
+            });
+          }
+        });
+      }
+    });
   }
 
   completeWorkOrder() {
-    // TODO: Implement work order completion
+    if (!this.workOrder) return;
+    
+    this.workOrderActionsService.completeWorkOrder(this.workOrder).subscribe({
+      next: (updatedWorkOrder: WorkOrder) => {
+        this.workOrder = updatedWorkOrder;
+        this.snackBar.open('Bon de travail terminé avec succès', 'Fermer', {
+          duration: 3000
+        });
+      },
+      error: (error: Error) => {
+        this.snackBar.open('Erreur lors de la finalisation du bon de travail', 'Fermer', {
+          duration: 3000
+        });
+      }
+    });
+  }
+
+  completeTask(taskId: number) {
+    if (!this.workOrder) return;
+    
+    this.workOrderActionsService.completeTask(this.workOrder, taskId).subscribe({
+      next: (updatedWorkOrder) => {
+        this.workOrder = updatedWorkOrder;
+        this.snackBar.open('Tâche terminée avec succès', 'Fermer', {
+          duration: 3000
+        });
+      },
+      error: (error) => {
+        this.snackBar.open('Erreur lors de la finalisation de la tâche', 'Fermer', {
+          duration: 3000
+        });
+      }
+    });
   }
 }

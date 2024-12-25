@@ -5,7 +5,7 @@ import { MatIconModule } from '@angular/material/icon';
 import { MatButtonModule } from '@angular/material/button';
 import { MatMenuModule } from '@angular/material/menu';
 import { MatTooltipModule } from '@angular/material/tooltip';
-import { Equipment } from '../../../models/equipment.model';
+import { Equipment, EquipmentStatus } from '../../../models/equipment.model';
 
 @Component({
   selector: 'app-equipment-card',
@@ -19,7 +19,11 @@ import { Equipment } from '../../../models/equipment.model';
     MatTooltipModule
   ],
   template: `
-    <mat-card class="equipment-card" [class.maintenance]="equipment.status === 'En maintenance'">
+    <mat-card class="equipment-card" 
+             [class.operational]="equipment.status === 'operational'"
+             [class.maintenance]="equipment.status === 'maintenance'"
+             [class.repair]="equipment.status === 'repair'"
+             [class.out-of-service]="equipment.status === 'out_of_service'">
       <mat-card-header>
         <mat-icon mat-card-avatar [class]="'equipment-type-' + equipment.category.family.toLowerCase()">
           {{getCategoryIcon(equipment.category.family)}}
@@ -74,7 +78,7 @@ import { Equipment } from '../../../models/equipment.model';
         </div>
 
         <div class="status-chip" [ngClass]="'status-' + equipment.status.toLowerCase()">
-          {{equipment.status}}
+          {{getStatusLabel(equipment.status)}}
         </div>
       </mat-card-content>
 
@@ -111,8 +115,20 @@ import { Equipment } from '../../../models/equipment.model';
       box-shadow: 0 4px 12px rgba(0,0,0,0.15);
     }
 
+    .equipment-card.operational {
+      border-left: 4px solid #2e7d32;
+    }
+
     .equipment-card.maintenance {
       border-left: 4px solid #f57c00;
+    }
+
+    .equipment-card.repair {
+      border-left: 4px solid #9c27b0;
+    }
+
+    .equipment-card.out-of-service {
+      border-left: 4px solid #c62828;
     }
 
     .more-button {
@@ -168,17 +184,22 @@ import { Equipment } from '../../../models/equipment.model';
       margin-top: 8px;
     }
 
-    .status-fonctionnel {
+    .status-operational {
       background-color: #e8f5e9;
       color: #2e7d32;
     }
 
-    .status-en.maintenance {
+    .status-maintenance {
       background-color: #fff3e0;
       color: #f57c00;
     }
 
-    .status-à.remplacer {
+    .status-repair {
+      background-color: #e1bee7;
+      color: #9c27b0;
+    }
+
+    .status-out-of-service {
       background-color: #ffebee;
       color: #c62828;
     }
@@ -206,5 +227,15 @@ export class EquipmentCardComponent {
       'Bâtiments': 'business'
     };
     return icons[category] || 'build';
+  }
+
+  getStatusLabel(status: EquipmentStatus): string {
+    const statusMap: Record<EquipmentStatus, string> = {
+      'operational': 'Fonctionnel',
+      'maintenance': 'En maintenance',
+      'repair': 'En réparation',
+      'out_of_service': 'Hors service'
+    };
+    return statusMap[status];
   }
 }

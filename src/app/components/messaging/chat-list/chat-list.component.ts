@@ -1,4 +1,9 @@
 import { Component, OnInit } from '@angular/core';
+import { Observable } from 'rxjs';
+import { map } from 'rxjs/operators';
+import { MessagingService } from '../../../services/messaging.service';
+import { AuthService } from '../../../services/auth.service';
+import { User } from '../../../models/user.model';
 import { CommonModule } from '@angular/common';
 import { RouterModule, Router, ActivatedRoute } from '@angular/router';
 import { MatListModule } from '@angular/material/list';
@@ -7,8 +12,6 @@ import { MatBadgeModule } from '@angular/material/badge';
 import { MatInputModule } from '@angular/material/input';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { FormsModule } from '@angular/forms';
-import { AuthService, User } from '../../../services/auth.service';
-import { MessagingService } from '../../../services/messaging.service';
 
 @Component({
   selector: 'app-chat-list',
@@ -35,14 +38,14 @@ import { MessagingService } from '../../../services/messaging.service';
 
       <div class="users-list">
         <a *ngFor="let user of filteredUsers" 
-           [routerLink]="['/messages', user.username]"
+           [routerLink]="['/messages', user.id]"
            routerLinkActive="active"
            class="user-item">
           <div class="user-avatar" [class.online]="user.isOnline">
-            {{user.username[0].toUpperCase()}}
+            {{user.name[0].toUpperCase()}}
           </div>
           <div class="user-info">
-            <div class="user-name">{{user.username}}</div>
+            <div class="user-name">{{user.name}}</div>
             <div class="user-role">{{user.role | titlecase}}</div>
           </div>
           <div class="user-status" *ngIf="user.unreadCount">
@@ -148,48 +151,54 @@ import { MessagingService } from '../../../services/messaging.service';
   `]
 })
 export class ChatListComponent implements OnInit {
-  users: (User & { isOnline: boolean, unreadCount: number })[] = [];
-  filteredUsers: (User & { isOnline: boolean, unreadCount: number })[] = [];
-  searchTerm: string = '';
   currentUserId: string | null = null;
+  users$: Observable<any[]>;
+  filteredUsers: any[] = [];
+  searchTerm: string = '';
 
   constructor(
-    private authService: AuthService,
     private messagingService: MessagingService,
+    private authService: AuthService,
     private router: Router,
     private route: ActivatedRoute
-  ) {}
-
-  ngOnInit() {
+  ) {
     const currentUser = this.authService.getCurrentUser();
     this.currentUserId = currentUser?.username || null;
 
-    // Get all users except current user
-    this.users = this.authService.getAllUsers()
-      .filter(user => user.username !== this.currentUserId)
-      .map(user => ({
-        ...user,
-        isOnline: Math.random() < 0.5, // Simulate online status
-        unreadCount: Math.floor(Math.random() * 5) // Simulate unread messages
-      }));
+    this.users$ = this.authService.getAllUsers().pipe(
+      map(users => users.filter(user => user.username !== this.currentUserId)),
+      map(users => users.map(user => ({
+        id: user.username,
+        name: `${user.firstName} ${user.lastName}`,
+        unreadCount: 0
+      })))
+    );
+  }
 
-    this.filteredUsers = [...this.users];
+  ngOnInit() {
+    this.users$.subscribe(users => {
+      this.filteredUsers = users;
+    });
 
     // Subscribe to route changes to update active user
     this.route.params.subscribe(params => {
       if (params['id']) {
-        this.users = this.users.map(user => ({
-          ...user,
-          active: user.username === params['id']
-        }));
+        this.users$.subscribe(users => {
+          this.filteredUsers = users.map(user => ({
+            ...user,
+            active: user.id === params['id']
+          }));
+        });
       }
     });
   }
 
   filterUsers() {
-    this.filteredUsers = this.users.filter(user =>
-      user.username.toLowerCase().includes(this.searchTerm.toLowerCase()) ||
-      user.role.toLowerCase().includes(this.searchTerm.toLowerCase())
-    );
+    this.users$.subscribe(users => {
+      this.filteredUsers = users.filter(user =>
+        user.name.toLowerCase().includes(this.searchTerm.toLowerCase()) ||
+        user.role.toLowerCase().includes(this.searchTerm.toLowerCase())
+      );
+    });
   }
 }

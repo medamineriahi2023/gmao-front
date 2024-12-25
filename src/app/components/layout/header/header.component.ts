@@ -26,6 +26,7 @@ import { MessagePanelComponent } from './messages/message-panel.component';
   template: `
     <mat-toolbar class="header">
       <div class="header-start">
+        <img style="width: 90px" src="../../../../assets/images/logo/logo-oga.png" alt="Logo">
         <button mat-icon-button (click)="menuToggled.emit()">
           <mat-icon>menu</mat-icon>
         </button>

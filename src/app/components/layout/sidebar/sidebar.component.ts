@@ -188,68 +188,76 @@ import { AuthService } from '../../../services/auth.service';
 })
 export class SidebarComponent {
   @Input() isOpen = true;
-  menuItems: MenuItem[];
+  menuItems: MenuItem[] = [
+    {
+      label: 'Tableau de bord',
+      icon: 'pi pi-th-large',
+      items: [
+        {
+          label: 'Vue générale',
+          icon: 'pi pi-view-quilt',
+          routerLink: '/dashboard'
+        },
+        {
+          label: 'Maintenance',
+          icon: 'pi pi-wrench',
+          routerLink: '/dashboard/maintenance'
+        },
+        {
+          label: 'Budget',
+          icon: 'pi pi-wallet',
+          routerLink: '/dashboard/budget'
+        }
+      ]
+    },
+    {
+      label: 'Équipements',
+      icon: 'pi pi-box',
+      routerLink: '/equipments'
+    },
+    {
+      label: 'Bons de travail',
+      icon: 'pi pi-file',
+      routerLink: '/work-orders'
+    },
+    {
+      label: 'Contrats',
+      icon: 'pi pi-file-pdf',
+      routerLink: '/contracts'
+    },
+    {
+      label: 'Budget',
+      icon: 'pi pi-wallet',
+      routerLink: '/budget'
+    },
+    {
+      label: 'Achats',
+      icon: 'pi pi-shopping-cart',
+      routerLink: '/purchase-requests'
+    },
+    {
+      label: 'Messages',
+      icon: 'pi pi-comments',
+      routerLink: '/messages'
+    },
+    {
+      label: 'Rapports',
+      icon: 'pi pi-chart-bar',
+      routerLink: '/reports'
+    },
+    {
+      label: 'Configuration',
+      icon: 'pi pi-cog',
+      routerLink: '/settings'
+    },
+    {
+      label: 'Déconnexion',
+      icon: 'pi pi-sign-out',
+      command: () => this.logout()
+    }
+  ];
 
-  constructor(private authService: AuthService) {
-    this.menuItems = [
-      {
-        label: 'Tableau de bord',
-        icon: 'pi pi-th-large',
-        items: [
-          {
-            label: 'Budget',
-            icon: 'pi pi-wallet',
-            routerLink: '/dashboard/budget'
-          }
-        ]
-      },
-      {
-        label: 'Équipements',
-        icon: 'pi pi-box',
-        routerLink: '/equipments'
-      },
-      {
-        label: 'Bons de travail',
-        icon: 'pi pi-file',
-        routerLink: '/work-orders'
-      },
-      {
-        label: 'Contrats',
-        icon: 'pi pi-file-pdf',
-        routerLink: '/contracts'
-      },
-      {
-        label: 'Budget',
-        icon: 'pi pi-wallet',
-        routerLink: '/budget'
-      },
-      {
-        label: 'Achats',
-        icon: 'pi pi-shopping-cart',
-        routerLink: '/purchase-requests'
-      },
-      {
-        label: 'Messages',
-        icon: 'pi pi-comments',
-        routerLink: '/messages'
-      },
-      {
-        label: 'Rapports',
-        icon: 'pi pi-chart-bar',
-        routerLink: '/reports'
-      },
-      {
-        label: 'Configuration',
-        icon: 'pi pi-cog',
-        routerLink: '/settings'
-      },
-      {
-        label: 'Déconnexion',
-        icon: 'pi pi-sign-out',
-        command: () => this.logout()
-      }
-    ];
-  }
+  constructor(private authService: AuthService) {}
 
   logout() {
     this.authService.logout();

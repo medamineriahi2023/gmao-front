@@ -120,29 +120,43 @@ export class EquipmentListComponent implements OnInit {
     });
   }
 
-  handleFiltersChange(filters: EquipmentFilters) {
-    this.filteredEquipments = this.equipments.filter(equipment => {
-      const matchesSearch = !filters.search || 
-        equipment.name.toLowerCase().includes(filters.search.toLowerCase()) ||
-        equipment.serialNumber.toLowerCase().includes(filters.search.toLowerCase()) ||
-        equipment.location.site.toLowerCase().includes(filters.search.toLowerCase());
+  filterEquipments(equipment: Equipment, filters: any): boolean {
+    // Filtre par recherche
+    if (filters.searchTerm) {
+      const searchTerm = filters.searchTerm.toLowerCase();
+      return equipment.name.toLowerCase().includes(searchTerm) ||
+        equipment.type.toLowerCase().includes(searchTerm) ||
+        equipment.serialNumber.toLowerCase().includes(searchTerm) ||
+        equipment.location.site.toLowerCase().includes(searchTerm) ||
+        equipment.category.family.toLowerCase().includes(searchTerm);
+    }
 
-      const matchesStatus = filters.statuses.length === 0 || 
-        filters.statuses.includes(equipment.status);
+    // Filtre par catégorie
+    if (filters.categories?.length > 0) {
+      if (!filters.categories.includes(equipment.category.family)) {
+        return false;
+      }
+    }
 
-      const matchesCategory = filters.categories.length === 0 || 
-        filters.categories.includes(equipment.category.family);
+    // Filtre par site
+    if (filters.sites?.length > 0) {
+      if (!filters.sites.includes(equipment.location.site)) {
+        return false;
+      }
+    }
 
-      const matchesSite = filters.sites.length === 0 || 
-        filters.sites.includes(equipment.location.site);
+    // Filtre par statut
+    if (filters.status?.length > 0) {
+      if (!filters.status.includes(equipment.status)) {
+        return false;
+      }
+    }
 
-      const matchesDateRange = !filters.maintenanceDateRange.start || !filters.maintenanceDateRange.end ||
-        (equipment.lastMaintenanceDate &&
-          equipment.lastMaintenanceDate >= filters.maintenanceDateRange.start &&
-          equipment.lastMaintenanceDate <= filters.maintenanceDateRange.end);
+    return true;
+  }
 
-      return matchesSearch && matchesStatus && matchesCategory && matchesSite && matchesDateRange;
-    });
+  handleFiltersChange(filters: any) {
+    this.filteredEquipments = this.equipments.filter(equipment => this.filterEquipments(equipment, filters));
   }
 
   openEquipmentForm() {

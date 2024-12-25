@@ -122,7 +122,7 @@ import { Component, OnInit } from '@angular/core';
 
       viewBudgetDetails(budget: Budget) {
         this.dialog.open(BudgetDetailsDialogComponent, {
-          width: '600px',
+          width: 'auto',
           data: { budget }
         });
       }

@@ -62,7 +62,26 @@ export class WorkOrderActionsService {
     );
   }
 
+  private checkPartsAvailability(workOrder: WorkOrder): boolean {
+    if (!workOrder.purchaseRequests || workOrder.purchaseRequests.length === 0) {
+      return true; // Pas de demandes d'achat, peut démarrer
+    }
+
+    // Vérifier si toutes les pièces demandées sont disponibles (status 'received')
+    return workOrder.purchaseRequests.every(request => request.status === 'received');
+  }
+
   startWorkOrder(workOrder: WorkOrder): Observable<WorkOrder> {
+    // Vérifier la disponibilité des pièces
+    if (!this.checkPartsAvailability(workOrder)) {
+      this.snackBar.open(
+        'Impossible de démarrer le bon de travail : certaines pièces ne sont pas encore disponibles',
+        'Fermer',
+        { duration: 5000 }
+      );
+      return new Observable<never>();
+    }
+
     const dialogRef = this.dialog.open(ConfirmDialogComponent, {
       width: '400px',
       data: {

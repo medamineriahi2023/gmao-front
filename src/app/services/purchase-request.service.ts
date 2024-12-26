@@ -1,57 +1,140 @@
 import { Injectable } from '@angular/core';
-import { Observable, of, BehaviorSubject } from 'rxjs';
-import { PurchaseRequest } from '../models/purchase-request.model';
+import { Observable, of } from 'rxjs';
+import { delay } from 'rxjs/operators';
+import { PurchaseRequest, PurchaseRequestStatus } from '../models/purchase-request.model';
 import { AuthService } from './auth.service';
-import { User } from '../models/user.model';
 
 @Injectable({
   providedIn: 'root'
 })
 export class PurchaseRequestService {
-  private purchaseRequests: PurchaseRequest[] = [
+  private mockPurchaseRequests: PurchaseRequest[] = [
     {
       id: 1,
-      item: 'Filtre à huile',
+      workOrderId: 1,
+      item: 'Roulement SKF 6205',
       quantity: 2,
-      requestedBy: 'tech1',
-      description: 'Remplacement lors de la maintenance',
-      status: 'pending'
+      description: 'Roulement à billes pour moteur principal',
+      requestedBy: 'Jean Dupont',
+      status: 'pending',
+      estimatedCost: 45.99,
+      supplier: 'SKF Distribution',
+      createdAt: new Date('2024-01-15'),
+      updatedAt: new Date('2024-01-15')
     },
     {
       id: 2,
-      item: 'Batterie 12V',
+      workOrderId: 1,
+      item: 'Courroie trapézoïdale',
       quantity: 1,
-      requestedBy: 'chief1',
-      description: 'Batterie défectueuse',
-      status: 'approved'
+      description: 'Courroie de transmission pour ventilateur',
+      requestedBy: 'Pierre Martin',
+      status: 'approved',
+      estimatedCost: 28.50,
+      supplier: 'Gates Industrial',
+      approvedBy: 'Marie Dubois',
+      approvedAt: new Date('2024-01-16'),
+      createdAt: new Date('2024-01-15'),
+      updatedAt: new Date('2024-01-16')
     }
   ];
-  private purchaseRequestsSubject = new BehaviorSubject<PurchaseRequest[]>(this.purchaseRequests);
 
-  constructor(private authService: AuthService) {}
+  constructor(private authService: AuthService) { }
 
   getPurchaseRequests(): Observable<PurchaseRequest[]> {
-    return this.purchaseRequestsSubject.asObservable();
+    return of(this.mockPurchaseRequests).pipe(delay(500));
   }
 
-  addPurchaseRequest(request: PurchaseRequest): Observable<PurchaseRequest> {
+  getPurchaseRequestById(id: number): Observable<PurchaseRequest | undefined> {
+    return of(this.mockPurchaseRequests.find(pr => pr.id === id)).pipe(delay(500));
+  }
+
+  getPurchaseRequestsByWorkOrder(workOrderId: number): Observable<PurchaseRequest[]> {
+    return of(this.mockPurchaseRequests.filter(pr => pr.workOrderId === workOrderId)).pipe(delay(500));
+  }
+
+  addPurchaseRequest(request: Partial<PurchaseRequest>): Observable<PurchaseRequest> {
+    const currentUser = this.authService.getCurrentUser();
+    if (!currentUser) {
+      throw new Error('User must be logged in to create a purchase request');
+    }
+
+    const now = new Date();
+    const newId = Math.max(0, ...this.mockPurchaseRequests.map(pr => pr.id ?? 0)) + 1;
+    
     const newRequest: PurchaseRequest = {
-      ...request,
-      id: Math.max(0, ...this.purchaseRequests.map(r => r.id)) + 1,
-      status: 'pending'
+      id: newId,
+      workOrderId: request.workOrderId!,
+      item: request.item || '',
+      quantity: request.quantity || 0,
+      description: request.description || '',
+      requestedBy: `${currentUser.firstName} ${currentUser.lastName}`,
+      status: 'pending',
+      estimatedCost: request.estimatedCost,
+      supplier: request.supplier,
+      createdAt: now,
+      updatedAt: now
     };
-    this.purchaseRequests.push(newRequest);
-    this.purchaseRequestsSubject.next(this.purchaseRequests);
-    return of(newRequest);
+
+    this.mockPurchaseRequests.push(newRequest);
+    return of(newRequest).pipe(delay(500));
   }
 
   updatePurchaseRequest(request: PurchaseRequest): Observable<PurchaseRequest> {
-    const index = this.purchaseRequests.findIndex(r => r.id === request.id);
-    if (index !== -1) {
-      this.purchaseRequests[index] = request;
-      this.purchaseRequestsSubject.next(this.purchaseRequests);
-      return of(request);
+    const currentUser = this.authService.getCurrentUser();
+    if (!currentUser) {
+      throw new Error('User must be logged in to update a purchase request');
     }
-    throw new Error('Purchase request not found');
+
+    const index = this.mockPurchaseRequests.findIndex(pr => pr.id === request.id);
+    if (index === -1) {
+      throw new Error('Purchase request not found');
+    }
+
+    const now = new Date();
+    const updatedRequest: PurchaseRequest = {
+      ...request,
+      updatedAt: now
+    };
+
+    this.mockPurchaseRequests[index] = updatedRequest;
+    return of(updatedRequest).pipe(delay(500));
+  }
+
+  updatePurchaseRequestStatus(request: PurchaseRequest, newStatus: PurchaseRequestStatus): Observable<PurchaseRequest> {
+    const currentUser = this.authService.getCurrentUser();
+    if (!currentUser) {
+      throw new Error('User must be logged in to update a purchase request');
+    }
+
+    const now = new Date();
+    const userName = `${currentUser.firstName} ${currentUser.lastName}`;
+    let updatedRequest: PurchaseRequest = {
+      ...request,
+      status: newStatus,
+      updatedAt: now
+    };
+
+    switch (newStatus) {
+      case 'approved':
+        updatedRequest = { ...updatedRequest, approvedBy: userName, approvedAt: now };
+        break;
+      case 'ordered':
+        updatedRequest = { ...updatedRequest, orderedBy: userName, orderedAt: now };
+        break;
+      case 'received':
+        updatedRequest = { ...updatedRequest, receivedBy: userName, receivedAt: now };
+        break;
+      case 'rejected':
+        updatedRequest = { ...updatedRequest, rejectedBy: userName, rejectedAt: now };
+        break;
+    }
+
+    const index = this.mockPurchaseRequests.findIndex(pr => pr.id === request.id);
+    if (index !== -1) {
+      this.mockPurchaseRequests[index] = updatedRequest;
+    }
+
+    return of(updatedRequest).pipe(delay(500));
   }
 }

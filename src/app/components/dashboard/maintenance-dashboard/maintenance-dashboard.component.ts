@@ -123,7 +123,6 @@ interface TechnicianWorkload {
                 <mat-form-field appearance="outline">
                   <mat-label>Statut</mat-label>
                   <mat-select [(ngModel)]="selectedStatus" (selectionChange)="onFiltersChange()" multiple>
-                    <mat-option value="draft">Brouillon</mat-option>
                     <mat-option value="planned">Planifié</mat-option>
                     <mat-option value="in_progress">En cours</mat-option>
                     <mat-option value="completed">Terminé</mat-option>
@@ -612,11 +611,6 @@ interface TechnicianWorkload {
       margin-right: 4px;
     }
 
-    .status-draft {
-      background: #f5f5f5;
-      color: #616161;
-    }
-
     .status-planned {
       background: #e3f2fd;
       color: #1565c0;
@@ -741,16 +735,16 @@ export class MaintenanceDashboardComponent implements OnInit, OnDestroy {
     start: new Date(),
     end: new Date()
   };
-  selectedStatus: WorkOrderStatus[] = ['draft', 'planned', 'in_progress'];
+  selectedStatus: WorkOrderStatus[] = ['planned', 'in_progress'];
   selectedTechnician: number | null = null;
   technicians: any[] = []; // À remplacer par le vrai type
 
   // Graphiques
   statusChartData: ChartConfiguration<'pie'>['data'] = {
-    labels: ['Brouillon', 'Planifié', 'En cours', 'Terminé', 'Annulé'],
+    labels: ['Planifié', 'En cours', 'Terminé', 'Annulé'],
     datasets: [{
-      data: [0, 0, 0, 0, 0],
-      backgroundColor: ['#f5f5f5', '#1565c0', '#f57c00', '#2e7d32', '#c62828']
+      data: [0, 0, 0, 0],
+      backgroundColor: ['#1565c0', '#f57c00', '#2e7d32', '#c62828']
     }]
   };
 
@@ -871,7 +865,6 @@ export class MaintenanceDashboardComponent implements OnInit, OnDestroy {
   private updateCharts(workOrders: WorkOrder[]) {
     // Mise à jour du graphique en camembert
     const statusCounts = {
-      draft: workOrders.filter(wo => wo.status === 'draft').length,
       planned: workOrders.filter(wo => wo.status === 'planned').length,
       in_progress: workOrders.filter(wo => wo.status === 'in_progress').length,
       completed: workOrders.filter(wo => wo.status === 'completed').length,
@@ -879,16 +872,15 @@ export class MaintenanceDashboardComponent implements OnInit, OnDestroy {
     };
 
     this.statusChartData = {
-      labels: ['Brouillon', 'Planifié', 'En cours', 'Terminé', 'Annulé'],
+      labels: ['Planifié', 'En cours', 'Terminé', 'Annulé'],
       datasets: [{
         data: [
-          statusCounts.draft,
           statusCounts.planned,
           statusCounts.in_progress,
           statusCounts.completed,
           statusCounts.cancelled
         ],
-        backgroundColor: ['#f5f5f5', '#1565c0', '#f57c00', '#2e7d32', '#c62828']
+        backgroundColor: ['#1565c0', '#f57c00', '#2e7d32', '#c62828']
       }]
     };
 
@@ -919,7 +911,7 @@ export class MaintenanceDashboardComponent implements OnInit, OnDestroy {
   private updateWorkOrdersTable(workOrders: WorkOrder[]) {
     this.totalWorkOrders = workOrders.length;
     this.activeWorkOrders = workOrders
-      .filter(wo => ['draft', 'planned', 'in_progress'].includes(wo.status))
+      .filter(wo => ['planned', 'in_progress'].includes(wo.status))
       .map(wo => {
         const completedTasks = wo.tasks?.filter(t => t.status === 'completed').length || 0;
         const totalTasks = wo.tasks?.length || 0;
@@ -1110,7 +1102,7 @@ export class MaintenanceDashboardComponent implements OnInit, OnDestroy {
       .subscribe((workOrders: WorkOrder[]) => {
         this.totalWorkOrders = workOrders.length;
         this.activeWorkOrders = workOrders
-          .filter((wo: WorkOrder) => ['draft', 'planned', 'in_progress'].includes(wo.status))
+          .filter((wo: WorkOrder) => ['planned', 'in_progress'].includes(wo.status))
           .map((wo: WorkOrder) => {
             const completedTasks = wo.tasks?.filter((t: { status: string }) => t.status === 'completed').length || 0;
             const totalTasks = wo.tasks?.length || 0;
@@ -1142,14 +1134,13 @@ export class MaintenanceDashboardComponent implements OnInit, OnDestroy {
   }
 
   getStatusLabel(status: WorkOrderStatus): string {
-    const labels: Record<WorkOrderStatus, string> = {
-      'draft': 'Brouillon',
+    const statusLabels: Record<WorkOrderStatus, string> = {
       'planned': 'Planifié',
       'in_progress': 'En cours',
       'completed': 'Terminé',
       'cancelled': 'Annulé'
     };
-    return labels[status] || status;
+    return statusLabels[status] || status;
   }
 
   getTechnicianName(technicianId: number): string {
@@ -1163,14 +1154,13 @@ export class MaintenanceDashboardComponent implements OnInit, OnDestroy {
   }
 
   getStatusIcon(status: WorkOrderStatus): string {
-    const icons: Record<WorkOrderStatus, string> = {
-      'draft': 'edit',
-      'planned': 'event',
+    const statusIcons: Record<WorkOrderStatus, string> = {
+      'planned': 'schedule',
       'in_progress': 'engineering',
       'completed': 'check_circle',
       'cancelled': 'cancel'
     };
-    return icons[status];
+    return statusIcons[status] || 'help';
   }
 
   protected readonly Math = Math;

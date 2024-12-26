@@ -99,9 +99,9 @@ export class WorkOrderPlanningDialogComponent {
   createEmptyTask(): WorkOrderTask {
     return {
       id: this.tasks.length + 1,
-      description: this.taskForm.get('description')?.value || '',
+      description: this.taskForm?.get('description')?.value || '',
       status: 'pending',
-      estimatedDuration: this.taskForm.get('estimatedDuration')?.value || 0,
+      estimatedDuration: this.taskForm?.get('estimatedDuration')?.value || 0,
       category: 'inspection',
       requiredSkills: [],
       safetyInstructions: [],

@@ -1,7 +1,4 @@
-export type WorkOrderType = 'corrective' | 'preventive' | 'conditional';
-export type WorkOrderStatus = 'draft' | 'planned' | 'in_progress' | 'completed' | 'cancelled';
-export type WorkOrderPriority = 'low' | 'medium' | 'high' | 'urgent';
-export type MaintenanceFrequency = 'daily' | 'weekly' | 'monthly' | 'quarterly' | 'biannual' | 'annual';
+import { PurchaseRequest } from './purchase-request.model';
 
 // Interface de base pour les bons de travail
 export interface BaseWorkOrder {
@@ -22,9 +19,16 @@ export interface BaseWorkOrder {
   parts: WorkOrderPart[];
   tasks: WorkOrderTask[];
   comments: WorkOrderComment[];
+  purchaseRequests: PurchaseRequest[];
   createdAt: Date;
   updatedAt: Date;
 }
+
+// Type de bon de travail
+export type WorkOrderType = 'corrective' | 'preventive' | 'conditional';
+export type WorkOrderStatus = 'planned' | 'in_progress' | 'completed' | 'cancelled';
+export type WorkOrderPriority = 'low' | 'medium' | 'high' | 'urgent';
+export type MaintenanceFrequency = 'daily' | 'weekly' | 'monthly' | 'quarterly' | 'biannual' | 'annual';
 
 // Extension pour la maintenance préventive
 export interface PreventiveMaintenanceData {

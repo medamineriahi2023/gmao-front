@@ -1,9 +1,10 @@
 export type InterventionType = 'curative' | 'preventive' | 'conditional';
-export type InterventionStatus = 'draft' | 'pending' | 'approved' | 'in_progress' | 'completed' | 'rejected';
+export type InterventionStatus = 'planned' | 'in_progress' | 'completed';
 export type InterventionPriority = 'low' | 'medium' | 'high' | 'critical';
 
 export interface Intervention {
   id: number;
+  title: string;
   type: InterventionType;
   equipmentId: number;
   description: string;
@@ -37,7 +38,7 @@ export interface InterventionPart {
 export interface InterventionTask {
   id: number;
   description: string;
-  status: 'pending' | 'in_progress' | 'completed';
+  status: 'planned' | 'in_progress' | 'completed';
   estimatedDuration: number;
   actualDuration?: number;
   technicianNotes?: string;

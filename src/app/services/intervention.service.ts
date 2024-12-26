@@ -29,7 +29,7 @@ export class InterventionService {
     const newIntervention: Intervention = {
       id: Math.max(0, ...this.interventions.map(i => i.id)) + 1,
       reportedAt: new Date(),
-      status: 'draft',
+      status: 'planned',
       assignedTechnicians: [],
       parts: [],
       tasks: [],

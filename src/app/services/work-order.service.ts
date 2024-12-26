@@ -15,59 +15,24 @@ export class WorkOrderService {
       status: 'planned',
       priority: 'medium',
       equipmentId: 1,
-      title: 'Maintenance préventive - Chargeuse',
-      description: 'Maintenance périodique de la chargeuse compacte',
-      plannedStartDate: new Date('2024-02-15'),
-      plannedEndDate: new Date('2024-02-15'),
+      title: 'Maintenance préventive - Pompe P101',
+      description: 'Maintenance préventive trimestrielle de la pompe P101',
+      plannedStartDate: new Date('2024-01-15'),
+      plannedEndDate: new Date('2024-01-15'),
       assignedTechnicianId: 1,
-      estimatedCost: 850,
-      parts: [
-        {
-          id: 1,
-          name: 'Filtre à huile',
-          quantity: 1,
-          unitCost: 45,
-          totalCost: 45
-        },
-        {
-          id: 2,
-          name: 'Huile moteur',
-          quantity: 5,
-          unitCost: 12,
-          totalCost: 60
-        }
-      ],
-      tasks: [
-        {
-          id: 1,
-          description: 'Vidange huile moteur',
-          status: 'pending',
-          estimatedDuration: 60,
-          technicianNotes: '',
-          category: 'repair',
-          requiredSkills: ['mécanique'],
-          safetyInstructions: ['Porter des gants', 'Vérifier que le moteur est froid']
-        },
-        {
-          id: 2,
-          description: 'Remplacement filtres',
-          status: 'pending',
-          estimatedDuration: 30,
-          technicianNotes: '',
-          category: 'replacement',
-          requiredSkills: ['mécanique'],
-          safetyInstructions: ['Porter des gants']
-        }
-      ],
+      estimatedCost: 500,
+      parts: [],
+      tasks: [],
       comments: [],
-      createdAt: new Date('2024-02-01'),
-      updatedAt: new Date('2024-02-01'),
+      purchaseRequests: [],
+      createdAt: new Date('2024-01-01'),
+      updatedAt: new Date('2024-01-01'),
       maintenanceData: {
         type: 'preventive',
         data: {
-          frequency: 'monthly',
-          lastMaintenanceDate: new Date(),
-          nextMaintenanceDate: new Date(new Date().setMonth(new Date().getMonth() + 1)),
+          frequency: 'quarterly',
+          lastMaintenanceDate: new Date('2023-10-15'),
+          nextMaintenanceDate: new Date('2024-04-15'),
           checklistItems: []
         }
       }
@@ -78,52 +43,25 @@ export class WorkOrderService {
       status: 'in_progress',
       priority: 'high',
       equipmentId: 2,
-      title: 'Réparation - Tondeuse',
-      description: 'Problème de démarrage sur la tondeuse autoportée',
-      plannedStartDate: new Date('2024-02-10'),
-      plannedEndDate: new Date('2024-02-10'),
-      actualStartDate: new Date('2024-02-10'),
+      title: 'Réparation - Convoyeur C201',
+      description: 'Remplacement du moteur défectueux',
+      plannedStartDate: new Date('2024-01-10'),
+      plannedEndDate: new Date('2024-01-11'),
+      actualStartDate: new Date('2024-01-10'),
       assignedTechnicianId: 2,
-      estimatedCost: 350,
+      estimatedCost: 1200,
+      actualCost: 0,
       parts: [],
-      tasks: [
-        {
-          id: 3,
-          description: 'Diagnostic système démarrage',
-          status: 'completed',
-          estimatedDuration: 45,
-          actualDuration: 30,
-          technicianNotes: 'Batterie défectueuse',
-          category: 'testing',
-          requiredSkills: ['électricité'],
-          safetyInstructions: ['Couper le contact', 'Débrancher la batterie']
-        },
-        {
-          id: 4,
-          description: 'Remplacement batterie',
-          status: 'in_progress',
-          estimatedDuration: 30,
-          technicianNotes: '',
-          category: 'replacement',
-          requiredSkills: ['électricité'],
-          safetyInstructions: ['Porter des gants isolants', 'Vérifier l\'absence de tension']
-        }
-      ],
-      comments: [
-        {
-          id: 1,
-          author: 'Pierre Durant',
-          content: 'Batterie complètement déchargée, remplacement nécessaire',
-          createdAt: new Date('2024-02-10T10:30:00')
-        }
-      ],
-      createdAt: new Date('2024-02-09'),
-      updatedAt: new Date('2024-02-10'),
+      tasks: [],
+      comments: [],
+      purchaseRequests: [],
+      createdAt: new Date('2024-01-09'),
+      updatedAt: new Date('2024-01-10'),
       maintenanceData: {
         type: 'corrective',
         data: {
           breakdownDate: new Date(),
-          breakdownDescription: '',
+          breakdownDescription: 'Moteur grillé suite à une surchauffe',
           impactLevel: 'medium',
           rootCause: '',
           solutionApplied: '',
@@ -171,7 +109,7 @@ export class WorkOrderService {
     const newWorkOrder: WorkOrder = {
       id: Math.max(0, ...this.workOrders.map(wo => wo.id)) + 1,
       type: workOrder.type || 'preventive',
-      status: 'draft',
+      status: 'planned',  // Statut par défaut
       priority: workOrder.priority || 'medium',
       equipmentId: workOrder.equipmentId || 0,
       title: workOrder.title || '',
@@ -180,14 +118,15 @@ export class WorkOrderService {
       plannedEndDate: workOrder.plannedEndDate || new Date(),
       assignedTechnicianId: workOrder.assignedTechnicianId || 0,
       estimatedCost: workOrder.estimatedCost || 0,
-      parts: [],
-      tasks: [],
+      parts: workOrder.parts || [],
+      tasks: workOrder.tasks || [],
       comments: [],
+      purchaseRequests: [],
       createdAt: new Date(),
       updatedAt: new Date(),
-      maintenanceData: this.initializeMaintenanceData(workOrder.type || 'preventive')
-    };
-    
+      ...workOrder
+    } as WorkOrder;
+
     this.workOrders.push(newWorkOrder);
     this.workOrdersSubject.next(this.workOrders);
     return of(newWorkOrder);

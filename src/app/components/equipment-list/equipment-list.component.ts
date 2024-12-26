@@ -39,7 +39,6 @@ import { MaintenanceDialogComponent } from '../equipment/maintenance-dialog/main
           Nouvel Équipement
         </button>
       </div>
-
       <app-equipment-filters
         (onFiltersChange)="handleFiltersChange($event)"
         (onViewChange)="currentView = $event">

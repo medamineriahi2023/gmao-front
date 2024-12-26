@@ -17,6 +17,8 @@ import { User } from '../../../models/user.model';
 import { Equipment } from '../../../models/equipment.model';
 import { MockDataService } from '../../../services/mock-data.service';
 import { WorkOrderPlanningDialogComponent } from '../work-order-planning/work-order-planning-dialog.component';
+import { PurchaseRequestDialogComponent } from '../purchase-request-dialog/purchase-request-dialog.component';
+import { PurchaseRequest, PurchaseRequestStatus } from '../../../models/purchase-request.model';
 
 @Component({
   selector: 'app-work-order-details',
@@ -30,8 +32,7 @@ import { WorkOrderPlanningDialogComponent } from '../work-order-planning/work-or
     MatDividerModule,
     MatTabsModule,
     MatCardModule,
-    MarkdownModule,
-    WorkOrderPlanningDialogComponent
+    MarkdownModule
   ],
   template: `
     <div class="details-container" *ngIf="workOrder">
@@ -162,6 +163,76 @@ import { WorkOrderPlanningDialogComponent } from '../work-order-planning/work-or
                     <span>{{task.technicianNotes}}</span>
                   </div>
                 </div>
+              </div>
+            </div>
+          </div>
+        </mat-tab>
+
+        <!-- Demandes d'achat Tab -->
+        <mat-tab label="Demandes d'achat">
+          <div class="tab-content">
+            <div class="purchase-requests-section">
+              <div class="section-header">
+                <h3>Demandes d'achat de pièces</h3>
+                <button mat-raised-button color="primary" (click)="openPurchaseRequestDialog()">
+                  <mat-icon>add_shopping_cart</mat-icon>
+                  Nouvelle demande
+                </button>
+              </div>
+
+              <div class="purchase-requests-list" *ngIf="workOrder.purchaseRequests?.length">
+                <mat-card *ngFor="let request of workOrder.purchaseRequests" class="request-card">
+                  <mat-card-header>
+                    <mat-card-title>{{request.item}}</mat-card-title>
+                    <mat-card-subtitle>
+                      Quantité : {{request.quantity}}
+                      <span [class]="'status-badge status-' + request.status">
+                        {{getPurchaseRequestStatusLabel(request.status)}}
+                      </span>
+                    </mat-card-subtitle>
+                  </mat-card-header>
+                  
+                  <mat-card-content>
+                    <p>{{request.description}}</p>
+                    <div class="request-details">
+                      <p><strong>Demandé par :</strong> {{request.requestedBy}}</p>
+                      <p *ngIf="request.status !== 'pending'">
+                        <strong>Dernière mise à jour :</strong> {{request.updatedAt | date:'dd/MM/yyyy HH:mm'}}
+                      </p>
+                    </div>
+                  </mat-card-content>
+
+                  <mat-card-actions align="end">
+                    <button mat-button color="primary" 
+                            *ngIf="request.status === 'pending'"
+                            (click)="updatePurchaseRequestStatus(request, 'approved')">
+                      <mat-icon>check</mat-icon>
+                      Approuver
+                    </button>
+                    <button mat-button color="accent" 
+                            *ngIf="request.status === 'approved'"
+                            (click)="updatePurchaseRequestStatus(request, 'ordered')">
+                      <mat-icon>shopping_cart</mat-icon>
+                      Marquer comme commandé
+                    </button>
+                    <button mat-button color="accent" 
+                            *ngIf="request.status === 'ordered'"
+                            (click)="updatePurchaseRequestStatus(request, 'received')">
+                      <mat-icon>inventory</mat-icon>
+                      Marquer comme reçu
+                    </button>
+                    <button mat-button color="warn" 
+                            *ngIf="request.status === 'pending'"
+                            (click)="updatePurchaseRequestStatus(request, 'rejected')">
+                      <mat-icon>close</mat-icon>
+                      Rejeter
+                    </button>
+                  </mat-card-actions>
+                </mat-card>
+              </div>
+
+              <div class="no-requests" *ngIf="!workOrder.purchaseRequests?.length">
+                <p>Aucune demande d'achat pour ce bon de travail</p>
               </div>
             </div>
           </div>
@@ -360,6 +431,64 @@ import { WorkOrderPlanningDialogComponent } from '../work-order-planning/work-or
         margin: 4px 0;
       }
     }
+
+    .purchase-requests-section {
+      padding: 20px;
+    }
+
+    .section-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 20px;
+    }
+
+    .request-card {
+      margin-bottom: 16px;
+    }
+
+    .status-badge {
+      padding: 4px 8px;
+      border-radius: 4px;
+      font-size: 12px;
+      margin-left: 8px;
+    }
+
+    .status-pending {
+      background-color: #fff3e0;
+      color: #e65100;
+    }
+
+    .status-approved {
+      background-color: #e8f5e9;
+      color: #2e7d32;
+    }
+
+    .status-ordered {
+      background-color: #e3f2fd;
+      color: #1565c0;
+    }
+
+    .status-received {
+      background-color: #f3e5f5;
+      color: #7b1fa2;
+    }
+
+    .status-rejected {
+      background-color: #ffebee;
+      color: #c62828;
+    }
+
+    .request-details {
+      margin-top: 16px;
+      font-size: 14px;
+    }
+
+    .no-requests {
+      text-align: center;
+      color: #666;
+      padding: 40px;
+    }
   `]
 })
 export class WorkOrderDetailsComponent implements OnInit {
@@ -423,6 +552,17 @@ export class WorkOrderDetailsComponent implements OnInit {
       'pending': 'En attente',
       'in_progress': 'En cours',
       'completed': 'Terminé'
+    };
+    return labels[status] || status;
+  }
+
+  getPurchaseRequestStatusLabel(status: PurchaseRequestStatus): string {
+    const labels: Record<PurchaseRequestStatus, string> = {
+      'pending': 'En attente',
+      'approved': 'Approuvé',
+      'ordered': 'Commandé',
+      'received': 'Reçu',
+      'rejected': 'Rejeté'
     };
     return labels[status] || status;
   }
@@ -560,6 +700,55 @@ export class WorkOrderDetailsComponent implements OnInit {
       },
       error: (error) => {
         this.snackBar.open('Erreur lors de la finalisation de la tâche', 'Fermer', {
+          duration: 3000
+        });
+      }
+    });
+  }
+
+  openPurchaseRequestDialog() {
+    const dialogRef = this.dialog.open(PurchaseRequestDialogComponent, {
+      width: '600px',
+      data: { workOrderId: this.workOrder?.id }
+    });
+
+    dialogRef.afterClosed().subscribe((request) => {
+      if (request) {
+        this.workOrderActionsService.addPurchaseRequest(this.workOrder!, request).subscribe({
+          next: (updatedWorkOrder) => {
+            this.workOrder = updatedWorkOrder;
+            this.snackBar.open('Demande d\'achat ajoutée avec succès', 'Fermer', {
+              duration: 3000
+            });
+          },
+          error: (error) => {
+            this.snackBar.open('Erreur lors de l\'ajout de la demande d\'achat', 'Fermer', {
+              duration: 3000
+            });
+          }
+        });
+      }
+    });
+  }
+
+  updatePurchaseRequestStatus(request: PurchaseRequest, newStatus: PurchaseRequestStatus) {
+    if (!this.workOrder) return;
+    
+    const updatedRequest: PurchaseRequest = {
+      ...request,
+      status: newStatus,
+      updatedAt: new Date()
+    };
+
+    this.workOrderActionsService.updatePurchaseRequestStatus(this.workOrder, updatedRequest, newStatus).subscribe({
+      next: (updatedWorkOrder) => {
+        this.workOrder = updatedWorkOrder;
+        this.snackBar.open('Statut de la demande d\'achat mis à jour', 'Fermer', {
+          duration: 3000
+        });
+      },
+      error: (error) => {
+        this.snackBar.open('Erreur lors de la mise à jour du statut', 'Fermer', {
           duration: 3000
         });
       }

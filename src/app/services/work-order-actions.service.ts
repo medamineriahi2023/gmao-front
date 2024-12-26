@@ -2,12 +2,13 @@ import { Injectable } from '@angular/core';
 import { MatDialog } from '@angular/material/dialog';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { Observable, from, of } from 'rxjs';
-import { switchMap, tap, delay } from 'rxjs/operators';
+import { switchMap, tap, delay, map } from 'rxjs/operators';
 import { WorkOrder } from '../models/work-order.model';
 import { WorkOrderService } from './work-order.service';
 import { ConfirmDialogComponent } from '../components/shared/confirm-dialog/confirm-dialog.component';
 import { WorkOrderCompletionDialogComponent } from '../components/work-orders/work-order-completion/work-order-completion-dialog.component';
 import { AuthService } from './auth.service';
+import { PurchaseRequest, PurchaseRequestStatus } from '../models/purchase-request.model';
 
 @Injectable({
   providedIn: 'root'
@@ -231,5 +232,78 @@ export class WorkOrderActionsService {
         return new Observable<never>();
       })
     );
+  }
+
+  addPurchaseRequest(workOrder: WorkOrder, request: Partial<PurchaseRequest>): Observable<WorkOrder> {
+    const currentUser = this.authService.getCurrentUser();
+    if (!currentUser) {
+      throw new Error('User must be logged in to create a purchase request');
+    }
+
+    const now = new Date();
+    const newRequest: PurchaseRequest = {
+      id: Math.floor(Math.random() * 1000),
+      workOrderId: workOrder.id,
+      item: request.item || '',
+      quantity: request.quantity || 0,
+      description: request.description || '',
+      requestedBy: `${currentUser.firstName} ${currentUser.lastName}`,
+      status: 'pending',
+      estimatedCost: request.estimatedCost,
+      supplier: request.supplier,
+      createdAt: now,
+      updatedAt: now
+    };
+
+    if (!workOrder.purchaseRequests) {
+      workOrder.purchaseRequests = [];
+    }
+    workOrder.purchaseRequests.push(newRequest);
+
+    return of(workOrder).pipe(delay(500));
+  }
+
+  updatePurchaseRequestStatus(workOrder: WorkOrder, request: PurchaseRequest, newStatus: PurchaseRequestStatus): Observable<WorkOrder> {
+    const currentUser = this.authService.getCurrentUser();
+    if (!currentUser) {
+      throw new Error('User must be logged in to update purchase request status');
+    }
+
+    const now = new Date();
+    const userName = `${currentUser.firstName} ${currentUser.lastName}`;
+
+    const updatedRequest: PurchaseRequest = {
+      ...request,
+      status: newStatus,
+      updatedAt: now
+    };
+
+    switch (newStatus) {
+      case 'approved':
+        updatedRequest.approvedBy = userName;
+        updatedRequest.approvedAt = now;
+        break;
+      case 'ordered':
+        updatedRequest.orderedBy = userName;
+        updatedRequest.orderedAt = now;
+        break;
+      case 'received':
+        updatedRequest.receivedBy = userName;
+        updatedRequest.receivedAt = now;
+        break;
+      case 'rejected':
+        updatedRequest.rejectedBy = userName;
+        updatedRequest.rejectedAt = now;
+        break;
+    }
+
+    const updatedWorkOrder = { ...workOrder };
+    const requestIndex = updatedWorkOrder.purchaseRequests?.findIndex(pr => pr.id === request.id) ?? -1;
+    
+    if (requestIndex !== -1 && updatedWorkOrder.purchaseRequests) {
+      updatedWorkOrder.purchaseRequests[requestIndex] = updatedRequest;
+    }
+
+    return of(updatedWorkOrder).pipe(delay(500));
   }
 }

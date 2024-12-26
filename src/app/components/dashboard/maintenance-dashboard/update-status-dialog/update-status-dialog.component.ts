@@ -61,7 +61,6 @@ interface DialogData {
 export class UpdateStatusDialog {
   selectedStatus: WorkOrderStatus | null = null;
   availableStatuses = [
-    { value: 'draft', label: 'Brouillon' },
     { value: 'planned', label: 'Planifié' },
     { value: 'in_progress', label: 'En cours' },
     { value: 'completed', label: 'Terminé' },
@@ -81,10 +80,6 @@ export class UpdateStatusDialog {
     
     // Logique de transition des statuts
     switch (currentStatus) {
-      case 'draft':
-        this.availableStatuses = this.availableStatuses.filter(s => 
-          ['planned', 'cancelled'].includes(s.value as WorkOrderStatus));
-        break;
       case 'planned':
         this.availableStatuses = this.availableStatuses.filter(s => 
           ['in_progress', 'cancelled'].includes(s.value as WorkOrderStatus));
